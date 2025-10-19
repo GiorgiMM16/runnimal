@@ -1,7 +1,7 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Send } from 'lucide-react-native';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 interface Message {
   id: string;
@@ -11,6 +11,7 @@ interface Message {
 
 export default function AIAssistantScreen() {
   const router = useRouter();
+  const scrollViewRef = useRef<ScrollView>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -24,6 +25,8 @@ export default function AIAssistantScreen() {
     },
   ]);
   const [inputText, setInputText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(true);
 
   const suggestions = [
     'When should I rest?',
@@ -31,6 +34,91 @@ export default function AIAssistantScreen() {
     'Daily challenge',
     'How to improve pace?',
   ];
+
+  const sendMessage = async () => {
+    if (!inputText.trim() || isLoading) return;
+
+    setShowSuggestions(false);
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: inputText.trim(),
+      isAI: false,
+    };
+
+    const currentMessages = [...messages];
+    setMessages(prev => [...prev, userMessage]);
+    setInputText('');
+    setIsLoading(true);
+
+    try {
+      const apiMessages = [
+        {
+          role: 'system',
+          content: "You are Coach Riley, an expert AI fitness coach for the Runimal app. You provide recovery advice, nutrition tips, and daily challenges to help users reach their fitness goals. Be supportive, motivating, and concise in your responses.",
+        },
+        ...currentMessages.map(msg => ({
+          role: msg.isAI ? 'assistant' : 'user',
+          content: msg.text,
+        })),
+        {
+          role: 'user',
+          content: userMessage.text,
+        },
+      ];
+
+      console.log('Sending request to OpenAI...');
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.EXPO_PUBLIC_OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: apiMessages,
+        }),
+      });
+
+      const data = await response.json();
+      console.log('OpenAI response:', data);
+
+      if (data.choices && data.choices[0]?.message?.content) {
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: data.choices[0].message.content,
+          isAI: true,
+        };
+        setMessages(prev => [...prev, aiMessage]);
+      } else if (data.error) {
+        console.error('OpenAI error:', data.error);
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: `Error: ${data.error.message || 'Unable to get response'}`,
+          isAI: true,
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
+    } catch (error) {
+      console.error('Fetch error:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "I'm having trouble connecting right now. Please try again in a moment.",
+        isAI: true,
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  };
+
+  const handleSuggestionPress = (suggestion: string) => {
+    setInputText(suggestion);
+  };
 
   return (
     <View style={styles.container}>
@@ -53,7 +141,12 @@ export default function AIAssistantScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.chatContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.chatContainer}
+        showsVerticalScrollIndicator={false}
+        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+      >
         {messages.map((message) => (
           <View
             key={message.id}
@@ -66,14 +159,26 @@ export default function AIAssistantScreen() {
           </View>
         ))}
 
-        <View style={styles.suggestionsContainer}>
-          <Text style={styles.suggestionsTitle}>Quick questions:</Text>
-          {suggestions.map((suggestion, index) => (
-            <TouchableOpacity key={index} style={styles.suggestionChip}>
-              <Text style={styles.suggestionText}>{suggestion}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {isLoading && (
+          <View style={[styles.messageBubble, styles.aiMessage]}>
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          </View>
+        )}
+
+        {showSuggestions && (
+          <View style={styles.suggestionsContainer}>
+            <Text style={styles.suggestionsTitle}>Quick questions:</Text>
+            {suggestions.map((suggestion, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.suggestionChip}
+                onPress={() => handleSuggestionPress(suggestion)}
+              >
+                <Text style={styles.suggestionText}>{suggestion}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
       <View style={styles.inputContainer}>
@@ -83,8 +188,14 @@ export default function AIAssistantScreen() {
           placeholderTextColor="#666"
           value={inputText}
           onChangeText={setInputText}
+          onSubmitEditing={sendMessage}
+          editable={!isLoading}
         />
-        <TouchableOpacity style={styles.sendButton}>
+        <TouchableOpacity
+          style={[styles.sendButton, isLoading && styles.sendButtonDisabled]}
+          onPress={sendMessage}
+          disabled={isLoading || !inputText.trim()}
+        >
           <Send size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
@@ -218,5 +329,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6B35',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
   },
 });

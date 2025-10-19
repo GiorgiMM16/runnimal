@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
+import { useActivityTracking } from '@/contexts/ActivityTrackingContext';
 
 interface ActivityType {
   id: string;
@@ -11,6 +12,7 @@ interface ActivityType {
 
 export default function SelectActivityScreen() {
   const router = useRouter();
+  const { startActivity } = useActivityTracking();
 
   const activities: ActivityType[] = [
     { id: 'run', name: 'Run', emoji: '🏃', description: 'Outdoor or indoor running' },
@@ -40,7 +42,10 @@ export default function SelectActivityScreen() {
             <TouchableOpacity
               key={activity.id}
               style={styles.activityCard}
-              onPress={() => router.back()}
+              onPress={() => {
+                startActivity(activity.id);
+                router.replace('/(tabs)/map');
+              }}
             >
               <Text style={styles.activityEmoji}>{activity.emoji}</Text>
               <Text style={styles.activityName}>{activity.name}</Text>

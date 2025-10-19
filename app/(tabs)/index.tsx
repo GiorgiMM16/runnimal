@@ -118,7 +118,7 @@ export default function Home() {
                     <View
                       style={[
                         styles.xpFill,
-                        { width: '28%' },
+                        { width: `${(activeRunimal.xp % 100)}%` },
                       ]}
                     />
                   </View>
