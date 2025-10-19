@@ -135,32 +135,6 @@ Pick your **virtual companion** that runs with you!
 
 ---
 
-## 🤝 **Contributing**
-
-We’re open to collaboration!  
-If you’d like to contribute ideas, code, or designs:
-
-1. Fork the repo  
-2. Create a new branch (`feature/your-idea`)  
-3. Submit a PR  
-
----
-
-## 🧩 **Tech Stack (planned)**
-
-| Feature | Technology |
-|----------|-------------|
-| Core App | SwiftUI / Kotlin |
-| AI Assistant | OpenAI API |
-| Backend | FastAPI / Firebase |
-| Database | Firestore |
-| Maps | Mapbox / Google Maps API |
-| Fitness APIs | Apple HealthKit / Google Fit |
-| Animations | Lottie / Unity Sprite Export |
-| Cloud Storage | Firebase / AWS S3 |
-
----
-
 ## 📅 **Upcoming Features**
 - 🧘 Mental wellness & mood tracking  
 - 🎧 Music-based challenge playlists  
